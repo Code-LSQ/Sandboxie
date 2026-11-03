@@ -21,6 +21,18 @@
 //---------------------------------------------------------------------------
 
 
+#include <stdio.h>
+#include "dll.h"
+#include "obj.h"
+#include "advapi.h"
+#include "core/svc/msgids.h"
+#include "core/svc/SbieIniWire.h"
+#include "core/svc/ProcessWire.h"
+#include "core/drv/api_defs.h"
+#include "core/svc/MountManagerWire.h"
+#include "common/my_version.h"
+
+
 //---------------------------------------------------------------------------
 // SbieDll_IsLanguageSupported
 //---------------------------------------------------------------------------
@@ -71,18 +83,6 @@ _FX BOOLEAN SbieDll_IsLanguageSupported(ULONG lang)
 
 
 #ifndef SBIEDLL_FORMATMESSAGE_ONLY
-
-
-#include <stdio.h>
-#include "dll.h"
-#include "obj.h"
-#include "advapi.h"
-#include "core/svc/msgids.h"
-#include "core/svc/SbieIniWire.h"
-#include "core/svc/ProcessWire.h"
-#include "core/drv/api_defs.h"
-#include "core/svc/MountManagerWire.h"
-#include "common/my_version.h"
 
 
 //---------------------------------------------------------------------------
