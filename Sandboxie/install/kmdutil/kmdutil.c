@@ -34,6 +34,8 @@ extern BOOL Kmd_FixDacls();
 
 extern BOOL Kmd_FixBoxDacls();
 
+extern BOOLEAN SbieDll_IsLanguageSupported(ULONG lang);
+
 
 //---------------------------------------------------------------------------
 // Defines
@@ -80,13 +82,18 @@ static ULONG LangParm = 0;
 
 ULONG SbieDll_GetLanguage(BOOLEAN *rtl)
 {
+    ULONG lang = LangParm;
+    if (! lang)
+        lang = GetUserDefaultUILanguage();
+    if (! SbieDll_IsLanguageSupported(lang))
+        lang = 1033;                    // default English
     if (rtl) {
-        if (LangParm == 1037 || LangParm == 1025)
+        if (lang == 1037 || lang == 1025)
             *rtl = TRUE;
         else
             *rtl = FALSE;
     }
-    return LangParm;
+    return lang;
 }
 
 #define SBIEDLL_FORMATMESSAGE_ONLY

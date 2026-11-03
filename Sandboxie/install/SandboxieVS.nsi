@@ -526,6 +526,7 @@ InstType_Done:
     IntCmp $0 1041 Lang_AutoSelect  ; Japanese
     IntCmp $0 1042 Lang_AutoSelect  ; Korean
     IntCmp $0 1071 Lang_AutoSelect  ; Macedonian
+    IntCmp $0 1044 Lang_AutoSelect  ; Norwegian
     IntCmp $0 1045 Lang_AutoSelect  ; Polish
     IntCmp $0 1046 Lang_AutoSelect  ; Portuguese (Brasil)
     IntCmp $0 2070 Lang_AutoSelect  ; Portuguese (Portugal)

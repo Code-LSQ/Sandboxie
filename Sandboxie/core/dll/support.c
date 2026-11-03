@@ -21,6 +21,55 @@
 //---------------------------------------------------------------------------
 
 
+//---------------------------------------------------------------------------
+// SbieDll_IsLanguageSupported
+//---------------------------------------------------------------------------
+
+
+//
+// SbieMsg.dll only carries the languages listed below, anything else has
+// to fall back to English, otherwise FormatMessage would fail and the
+// user would be shown a raw error string
+//
+
+_FX BOOLEAN SbieDll_IsLanguageSupported(ULONG lang)
+{
+    return
+        lang == 1025 ||     /* Arabic */
+        lang == 1026 ||     /* Bulgarian */
+        lang == 1050 ||     /* Croatian */
+        lang == 1029 ||     /* Czech */
+        lang == 1030 ||     /* Danish */
+        lang == 1031 ||     /* German */
+        lang == 1032 ||     /* Greek */
+        lang == 1034 ||     /* Spanish */
+        lang == 1035 ||     /* Finnish */
+        lang == 1036 ||     /* French */
+        lang == 1037 ||     /* Hebrew */
+        lang == 1038 ||     /* Hungarian */
+        lang == 1057 ||     /* Indonesian */
+        lang == 1040 ||     /* Italian */
+        lang == 1041 ||     /* Japanese */
+        lang == 1042 ||     /* Korean */
+        lang == 1043 ||     /* Dutch */
+        lang == 1044 ||     /* Norwegian */
+        lang == 1045 ||     /* Polish */
+        lang == 1046 ||     /* Portuguese (Brasil) */
+        lang == 2070 ||     /* Portuguese (Portugal) */
+        lang == 1049 ||     /* Russian */
+        lang == 1051 ||     /* Slovak */
+        lang == 1052 ||     /* Albanian */
+        lang == 1053 ||     /* Swedish */
+        lang == 1055 ||     /* Turkish */
+        lang == 1058 ||     /* Ukrainian */
+        lang == 1061 ||     /* Estonian */
+        lang == 1065 ||     /* Farsi */
+        lang == 1071 ||     /* Macedonian */
+        lang == 1028 ||     /* Chinese (Traditional) */
+        lang == 2052;       /* Chinese (Simplified) */
+}
+
+
 #ifndef SBIEDLL_FORMATMESSAGE_ONLY
 
 
@@ -302,7 +351,13 @@ _FX ULONG SbieDll_GetLanguage(BOOLEAN *rtl)
 
     if (! lang) {
 
-        lang = 1033;                            // default English
+        //
+        // default to the UI language of the current user, so that
+        // portable installations, which never write the Language
+        // value, still get translated messages
+        //
+
+        lang = GetUserDefaultUILanguage();
 
         if (SbieDll_GetServiceRegistryValue(
                 L"Language", &u.info, sizeof(u))) {
@@ -310,48 +365,35 @@ _FX ULONG SbieDll_GetLanguage(BOOLEAN *rtl)
             if (u.info.Type == REG_DWORD &&
                 u.info.DataLength == sizeof(ULONG)) {
 
-                lang = *(ULONG *)u.info.Data;
-                if (lang != 1025 &&     /* Arabic */
-                    lang != 1026 &&     /* Bulgarian */
-                    lang != 1050 &&     /* Croatian */
-                    lang != 1029 &&     /* Czech */
-                    lang != 1030 &&     /* Danish */
-                    lang != 1031 &&     /* German */
-                    lang != 1032 &&     /* Greek */
-                    lang != 1034 &&     /* Spanish */
-                    lang != 1035 &&     /* Finnish */
-                    lang != 1036 &&     /* French */
-                    lang != 1037 &&     /* Hebrew */
-                    lang != 1038 &&     /* Hungarian */
-                    lang != 1057 &&     /* Indonesian */
-                    lang != 1040 &&     /* Italian */
-                    lang != 1041 &&     /* Japanese */
-                    lang != 1042 &&     /* Korean */
-                    lang != 1043 &&     /* Dutch */
-                    lang != 1045 &&     /* Polish */
-                    lang != 1046 &&     /* Portuguese (Brasil) */
-                    lang != 2070 &&     /* Portuguese (Portugal) */
-                    lang != 1049 &&     /* Russian */
-                    lang != 1051 &&     /* Slovak */
-                    lang != 1052 &&     /* Albanian */
-                    lang != 1053 &&     /* Swedish */
-                    lang != 1055 &&     /* Turkish */
-                    lang != 1058 &&     /* Ukrainian */
-                    lang != 1061 &&     /* Estonian */
-                    lang != 1065 &&     /* Farsi */
-                    lang != 1071 &&     /* Macedonian */
-                    lang != 1028 &&     /* Chinese (Traditional) */
-                    lang != 2052) {     /* Chinese (Simplified) */
+                ULONG value = *(ULONG *)u.info.Data;
 
-                    lang = 1033;        /* English - default */
-                }
+                //
+                // zero means automatic, i.e. keep the language selected
+                // above; any other value is an explicit language override.
+                // zero is not a valid LCID, so it cannot be confused with
+                // a real language
+                //
+
+                if (value != 0)
+                    lang = value;
             }
         }
+
+        //
+        // SbieMsg.dll only carries the languages listed above.  Fall back
+        // to English for anything else: FormatMessage would fail for an
+        // unsupported language, and callers such as LCIDToLocaleName or
+        // the RTL layout check expect the returned value to be a language
+        // that actually exists
+        //
+
+        if (! SbieDll_IsLanguageSupported(lang))
+            lang = 1033;                        // default English
     }
 
     if (rtl) {
-        if (lang == 1037 ||             /* Hebrew */
-			lang == 1025)               /* Arabic */
+        if (lang == 1037 ||                     /* Hebrew */
+            lang == 1025)                       /* Arabic */
             *rtl = TRUE;
         else
             *rtl = FALSE;
@@ -882,9 +924,26 @@ _FX WCHAR *SbieDll_FormatMessage(ULONG code, const WCHAR **ins)
 
     if (SbieMsgDll) {
 
+        ULONG lang = SbieDll_GetLanguage(NULL);
+
         rc = FormatMessage(FormatFlags, SbieMsgDll, code,
-                           SbieDll_GetLanguage(NULL),
-                           (LPWSTR)&out, 4, (va_list *)ins);
+                           lang, (LPWSTR)&out, 4, (va_list *)ins);
+
+        if (rc == 0 && lang != 1033) {
+
+            //
+            // the requested language is not available in SbieMsg.dll,
+            // fall back to English instead of returning a raw error
+            //
+
+            if (out) {
+                LocalFree(out);
+                out = NULL;
+            }
+            rc = FormatMessage(FormatFlags, SbieMsgDll, code,
+                               1033, (LPWSTR)&out, 4, (va_list *)ins);
+        }
+
         if (rc != 0) {
             ULONG xrc = SbieDll_FormatMessage_2(&out, ins);
             if (xrc)
