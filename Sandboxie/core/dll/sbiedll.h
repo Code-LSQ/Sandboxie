@@ -104,6 +104,8 @@ SBIEDLL_EXPORT  BOOLEAN SbieDll_GetServiceRegistryValue(
 
 SBIEDLL_EXPORT  ULONG SbieDll_GetLanguage(BOOLEAN *rtl);
 
+SBIEDLL_EXPORT  VOID SbieDll_SetLanguage(ULONG lang);
+
 SBIEDLL_EXPORT  BOOLEAN SbieDll_KillOne(ULONG ProcessId);
 
 SBIEDLL_EXPORT  BOOLEAN SbieDll_KillAll(

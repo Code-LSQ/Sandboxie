@@ -1358,6 +1358,7 @@ struct SDialogParams
     HANDLE          idProcess;
     ULARGE_INTEGER  pkt_addr;
     ULONG           pkt_len;
+    ULONG           Lang;
     int             ButtonY;
     HWND            hYes;
     HWND            hNo;
@@ -1604,8 +1605,11 @@ int SecureDialogFunc(HWND hWndParent, void* param)
             Params.pkt_addr.HighPart = wcstoul(ptr + 1, &ptr, 16);
             if (*ptr == L'_') {
                 Params.pkt_addr.LowPart = wcstoul(ptr + 1, &ptr, 16);
-                if (*ptr == L'_')
+                if (*ptr == L'_') {
                     Params.pkt_len = wcstol(ptr + 1, &ptr, 16);
+                    if (*ptr == L'_')        // optional: UI language for the prompt
+                        Params.Lang = wcstoul(ptr + 1, &ptr, 16);
+                }
             }
         }
     }
@@ -1674,6 +1678,8 @@ int SecureDialogFunc(HWND hWndParent, void* param)
     ATOM atom = RegisterClassEx(&wc);
 
     BOOLEAN rtl;
+    if (Params.Lang)
+        SbieDll_SetLanguage(Params.Lang);
     SbieDll_GetLanguage(&rtl);
 
 	HDC hScreenDC = GetDC(NULL);

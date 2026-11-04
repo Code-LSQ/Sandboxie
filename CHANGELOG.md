@@ -10,10 +10,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - added line numbers to the built-in INI section editors, with an Advanced Editor Settings toggle and Ctrl+G destination highlighting; copying and saving exclude the line numbers
 - added configurable sandbox border labels on all four window edges through `BorderLabelPosition`, with adjustable position, stacked or rotated side text, fixed/adaptive placement, and a dedicated Box Border tab in sandbox options
 - added customizable sandbox border label fonts with native style and writing-system selection, GDI preview, synchronized point size, immediate font-only Apply, and reset to legacy defaults
+- added UI language resolution for the Sandboxie UAC prompt: the service determines the UI language under the requesting process's token and passes it to the prompt dialog, so the prompt matches the language of the user being prompted rather than the machine default
 
 ### Changed
 - switched x64 build to qt 6.8.4
 - changed pending-change tracking to support individually applied numeric fields without clearing unrelated pending highlights
+- changed automatic UI language detection in SandMan to prefer the Windows display language over the regional format, keeping the Plus UI and native popups like the Sandboxie UAC prompt in the same language
 
 ### Fixed
 - fixed misleading comment highlighting for INI lines starting with `;` without `=`; saving now shows a line-numbered error recommending `#` and preserves unsaved edits [#5685](https://github.com/sandboxie-plus/Sandboxie/issues/5685)
@@ -21,6 +23,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Language corrupted after version 1.16.0 [#5079](https://github.com/sandboxie-plus/Sandboxie/issues/5079)
 - fixed immediate portable sandbox configuration updates reporting success when saving the INI file or reloading the configuration fails
 - fixed boxed processes not terminating when closing the SandMan window with termination-on-exit enabled, and prevented premature termination when canceling portable cleanup [#5696](https://github.com/sandboxie-plus/Sandboxie/issues/5696)
+- fixed SbieMsg popups (driver and service messages, KmdUtil) always showing in English in portable setups where no Language registry value is set; they now default to the current user's UI language and fall back to English when the language is not available in SbieMsg.dll
 
 
 

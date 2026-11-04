@@ -60,6 +60,31 @@ static ULONG SbieDll_LanguageOverride = 0;
 
 
 //---------------------------------------------------------------------------
+// SbieDll_SetLanguage
+//---------------------------------------------------------------------------
+
+
+//
+// explicit language override for host processes that know the language
+// better than this DLL could detect it.  Start.exe, when drawing the
+// Sandboxie UAC prompt, receives the language of the user being prompted
+// from SbieSvc, which resolved it under the requesting process's token,
+// because the prompt itself runs with the service token, where the
+// automatic detection below would return the machine default language.
+// takes precedence over the registry value and automatic detection,
+// zero restores automatic detection.  must be set before the first
+// SbieDll_GetLanguage call, which caches the resolved language
+//
+
+static ULONG SbieDll_Language = 0;
+
+_FX VOID SbieDll_SetLanguage(ULONG lang)
+{
+    SbieDll_Language = lang;
+}
+
+
+//---------------------------------------------------------------------------
 // SbieDll_IsLanguageSupported
 //---------------------------------------------------------------------------
 
@@ -166,6 +191,15 @@ _FX ULONG SbieDll_GetLanguage(BOOLEAN *rtl)
             lang = SbieDll_LanguageOverride;
 
 #endif  /* SBIEDLL_FORMATMESSAGE_ONLY */
+
+        //
+        // an explicit override set through SbieDll_SetLanguage wins over
+        // everything above: it comes from the host process which knows
+        // the language to use, e.g. resolved for the requesting user
+        //
+
+        if (SbieDll_Language != 0)
+            lang = SbieDll_Language;
 
         //
         // SbieMsg.dll only carries the languages listed above.  Fall back

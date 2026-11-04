@@ -554,13 +554,43 @@ ULONG ServiceServer::UacHandler2(
                     // Set the new session ID on the duplicated token
                     if (SetTokenInformation(hNewToken, TokenSessionId, (LPVOID)&SessionId, sizeof(SessionId))) {
 
+                        //
+                        // resolve the UI language of the user we are about to
+                        // prompt: this process and the prompt process run with
+                        // the service token, where GetUserDefaultUILanguage
+                        // would return the machine default language rather
+                        // than the language of the user behind the request.
+                        // impersonate the requesting process's token while
+                        // querying; on failure the prompt falls back to the
+                        // language detected in its own context
+                        //
+
+                        ULONG UserLang = 0;
+
+                        HANDLE hUserProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, (ULONG)(ULONG_PTR)idProcess);
+                        if (hUserProcess) {
+                            HANDLE hUserToken;
+                            if (OpenProcessToken(hUserProcess, TOKEN_DUPLICATE | TOKEN_QUERY, &hUserToken)) {
+                                HANDLE hImpToken;
+                                if (DuplicateTokenEx(hUserToken, MAXIMUM_ALLOWED, nullptr, SecurityImpersonation, TokenImpersonation, &hImpToken)) {
+                                    if (ImpersonateLoggedOnUser(hImpToken)) {
+                                        UserLang = GetUserDefaultUILanguage();
+                                        RevertToSelf();
+                                    }
+                                    CloseHandle(hImpToken);
+                                }
+                                CloseHandle(hUserToken);
+                            }
+                            CloseHandle(hUserProcess);
+                        }
+
                         WCHAR args[128];
                         LARGE_INTEGER pkt_addr_64;
                         pkt_addr_64.QuadPart = pkt_addr;
 
-                        wsprintf(args, L"uac_prompt %08X_%08X_%08X_%08X",
+                        wsprintf(args, L"uac_prompt %08X_%08X_%08X_%08X_%04X",
                             (ULONG)(ULONG_PTR)idProcess,
-                            pkt_addr_64.HighPart, pkt_addr_64.LowPart, pkt_len);
+                            pkt_addr_64.HighPart, pkt_addr_64.LowPart, pkt_len, UserLang);
 
                         ExePath = BuildPathForStartExe(idProcess, NULL, NULL, args, NULL);
 

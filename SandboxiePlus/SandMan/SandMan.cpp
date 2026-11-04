@@ -5017,8 +5017,20 @@ void CSandMan::UpdateTitleTheme(const HWND& hwnd)
 void CSandMan::LoadLanguage()
 {
 	m_Language = theConf->GetString("Options/UiLanguage");
-	if(m_Language.isEmpty())
-		m_Language = QLocale::system().name();
+	if (m_Language.isEmpty()) {
+		//
+		// automatic language selection: prefer the Windows display
+		// language (also used by system dialogs like the UAC prompt)
+		// over the regional format, so the Plus UI and native popups
+		// like the Sandboxie UAC prompt are shown in the same language;
+		// fall back to the regional format if it can't be determined
+		//
+		QStringList uiLangs = QLocale::system().uiLanguages();
+		if (!uiLangs.isEmpty())
+			m_Language = QLocale(uiLangs.first()).name();
+		if (m_Language.isEmpty() || m_Language == "C")
+			m_Language = QLocale::system().name();
+	}
 
 	if (m_Language.compare("native", Qt::CaseInsensitive) == 0)
 #ifdef _DEBUG
