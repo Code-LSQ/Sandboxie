@@ -34,6 +34,32 @@
 
 
 //---------------------------------------------------------------------------
+// SbieDll_LanguageOverride
+//---------------------------------------------------------------------------
+
+
+//
+// optional explicit language override, used by builds that include this
+// file directly and receive the language on the command line rather than
+// from the service registry.  zero, the default, means no override
+//
+
+#ifndef SBIEDLL_LANGUAGE_OVERRIDE
+
+#ifdef SBIEDLL_FORMATMESSAGE_ONLY
+
+static ULONG SbieDll_LanguageOverride = 0;
+
+#else
+
+#define SbieDll_LanguageOverride    0
+
+#endif
+
+#endif  /* SBIEDLL_LANGUAGE_OVERRIDE */
+
+
+//---------------------------------------------------------------------------
 // SbieDll_IsLanguageSupported
 //---------------------------------------------------------------------------
 
@@ -79,6 +105,89 @@ _FX BOOLEAN SbieDll_IsLanguageSupported(ULONG lang)
         lang == 1071 ||     /* Macedonian */
         lang == 1028 ||     /* Chinese (Traditional) */
         lang == 2052;       /* Chinese (Simplified) */
+}
+
+
+//---------------------------------------------------------------------------
+// SbieDll_GetLanguage
+//---------------------------------------------------------------------------
+
+
+_FX ULONG SbieDll_GetLanguage(BOOLEAN *rtl)
+{
+    static ULONG lang = 0;
+
+    if (! lang) {
+
+        //
+        // default to the UI language of the current user, so that
+        // portable installations, which never write the Language
+        // value, still get translated messages
+        //
+
+        lang = GetUserDefaultUILanguage();
+
+#ifndef SBIEDLL_FORMATMESSAGE_ONLY
+
+        union {
+            KEY_VALUE_PARTIAL_INFORMATION info;
+            WCHAR space[32];
+        } u;
+
+        if (SbieDll_GetServiceRegistryValue(
+                L"Language", &u.info, sizeof(u))) {
+
+            if (u.info.Type == REG_DWORD &&
+                u.info.DataLength == sizeof(ULONG)) {
+
+                ULONG value = *(ULONG *)u.info.Data;
+
+                //
+                // zero means automatic, i.e. keep the language selected
+                // above; any other value is an explicit language override.
+                // zero is not a valid LCID, so it cannot be confused with
+                // a real language
+                //
+
+                if (value != 0)
+                    lang = value;
+            }
+        }
+
+#else
+
+        //
+        // builds that include this file directly, such as KmdUtil, have
+        // no service to query, they pass an explicit language on the
+        // command line instead
+        //
+
+        if (SbieDll_LanguageOverride != 0)
+            lang = SbieDll_LanguageOverride;
+
+#endif  /* SBIEDLL_FORMATMESSAGE_ONLY */
+
+        //
+        // SbieMsg.dll only carries the languages listed above.  Fall back
+        // to English for anything else: FormatMessage would fail for an
+        // unsupported language, and callers such as LCIDToLocaleName or
+        // the RTL layout check expect the returned value to be a language
+        // that actually exists
+        //
+
+        if (! SbieDll_IsLanguageSupported(lang))
+            lang = 1033;                        // default English
+    }
+
+    if (rtl) {
+        if (lang == 1037 ||                     /* Hebrew */
+            lang == 1025)                       /* Arabic */
+            *rtl = TRUE;
+        else
+            *rtl = FALSE;
+    }
+
+    return lang;
 }
 
 
@@ -333,73 +442,6 @@ _FX BOOLEAN SbieDll_GetServiceRegistryValue(
         return FALSE;
 
     return TRUE;
-}
-
-
-//---------------------------------------------------------------------------
-// SbieDll_GetLanguage
-//---------------------------------------------------------------------------
-
-
-_FX ULONG SbieDll_GetLanguage(BOOLEAN *rtl)
-{
-    static ULONG lang = 0;
-    union {
-        KEY_VALUE_PARTIAL_INFORMATION info;
-        WCHAR space[32];
-    } u;
-
-    if (! lang) {
-
-        //
-        // default to the UI language of the current user, so that
-        // portable installations, which never write the Language
-        // value, still get translated messages
-        //
-
-        lang = GetUserDefaultUILanguage();
-
-        if (SbieDll_GetServiceRegistryValue(
-                L"Language", &u.info, sizeof(u))) {
-
-            if (u.info.Type == REG_DWORD &&
-                u.info.DataLength == sizeof(ULONG)) {
-
-                ULONG value = *(ULONG *)u.info.Data;
-
-                //
-                // zero means automatic, i.e. keep the language selected
-                // above; any other value is an explicit language override.
-                // zero is not a valid LCID, so it cannot be confused with
-                // a real language
-                //
-
-                if (value != 0)
-                    lang = value;
-            }
-        }
-
-        //
-        // SbieMsg.dll only carries the languages listed above.  Fall back
-        // to English for anything else: FormatMessage would fail for an
-        // unsupported language, and callers such as LCIDToLocaleName or
-        // the RTL layout check expect the returned value to be a language
-        // that actually exists
-        //
-
-        if (! SbieDll_IsLanguageSupported(lang))
-            lang = 1033;                        // default English
-    }
-
-    if (rtl) {
-        if (lang == 1037 ||                     /* Hebrew */
-            lang == 1025)                       /* Arabic */
-            *rtl = TRUE;
-        else
-            *rtl = FALSE;
-    }
-
-    return lang;
 }
 
 

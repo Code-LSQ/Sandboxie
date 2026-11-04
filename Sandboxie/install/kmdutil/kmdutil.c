@@ -34,8 +34,6 @@ extern BOOL Kmd_FixDacls();
 
 extern BOOL Kmd_FixBoxDacls();
 
-extern BOOLEAN SbieDll_IsLanguageSupported(ULONG lang);
-
 
 //---------------------------------------------------------------------------
 // Defines
@@ -74,27 +72,17 @@ typedef enum _OPTIONS {
 
 SC_HANDLE ScMgr;
 
-static ULONG LangParm = 0;
+//
+// SbieDll_GetLanguage and SbieDll_IsLanguageSupported are taken from
+// core/dll/support.c below, so that the installer path uses the same
+// language selection and validation as SbieDll itself.  this build has
+// no service to query, so /lang= given on the command line is fed back
+// in as an explicit override instead
+//
 
-//---------------------------------------------------------------------------
-// SbieDll_GetLanguage
-//---------------------------------------------------------------------------
+static ULONG SbieDll_LanguageOverride = 0;
 
-ULONG SbieDll_GetLanguage(BOOLEAN *rtl)
-{
-    ULONG lang = LangParm;
-    if (! lang)
-        lang = GetUserDefaultUILanguage();
-    if (! SbieDll_IsLanguageSupported(lang))
-        lang = 1033;                    // default English
-    if (rtl) {
-        if (lang == 1037 || lang == 1025)
-            *rtl = TRUE;
-        else
-            *rtl = FALSE;
-    }
-    return lang;
-}
+#define SBIEDLL_LANGUAGE_OVERRIDE
 
 #define SBIEDLL_FORMATMESSAGE_ONLY
 
@@ -198,7 +186,7 @@ BOOL Parse_Command_Line(
     memcpy(args, xargs, sizeof(ULONG_PTR) * num_args_given);
 
     if (num_args_given > 1 && _wcsnicmp(args[1], L"/lang=", 6) == 0) {
-        LangParm = _wtoi(args[1] + 6);
+        SbieDll_LanguageOverride = _wtoi(args[1] + 6);
         --num_args_given;
         memcpy(&args[1], &xargs[2],
                sizeof(ULONG_PTR) * (num_args_given - 1));
